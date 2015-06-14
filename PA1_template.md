@@ -1,8 +1,3 @@
----
-output:
-  html_document:
-    keep_md: yes
----
 # Reproducible Research: Peer Assessment 1
 Andres Mauricio Castro
 
@@ -12,13 +7,15 @@ This document describes all the process followed, in order to answer the questio
 ## Loading and preprocessing the data
 Unzip the file containing the dataset, and read it.
 
-```{r}
+
+```r
 unzip("activity.zip")
 data <- read.csv("activity.csv", header=T, quote="\"", sep=",")
 ```
 
 Convert date to date data type
-```{r}
+
+```r
 data$date <- as.Date(data$date) 
 ```
 
@@ -29,7 +26,8 @@ data$date <- as.Date(data$date)
 3. Fix the columns names in the aggregated data set.
 4. Plot the histogram, showing the frequence of the ranges; for this process, the number of breaks is 10.
 
-```{r}
+
+```r
 data.no.na <- na.omit(data) 
 stepsByDay <- aggregate(data.no.na$steps, by =list(data.no.na$date), FUN = "sum")
 colnames(stepsByDay) <- c("Date", "Steps")
@@ -39,13 +37,25 @@ hist(stepsByDay$Steps,
      xlab="Breaks = 10") 
 ```
 
+![](PA1_template_files/figure-html/unnamed-chunk-3-1.png) 
+
 Mean of steps:
-```{r}
+
+```r
 mean(stepsByDay$Steps); 
 ```
+
+```
+## [1] 10766.19
+```
 Median of steps:
-```{r}
+
+```r
 median(stepsByDay$Steps); 
+```
+
+```
+## [1] 10765
 ```
 
 ## What is the average daily activity pattern?
@@ -56,7 +66,8 @@ median(stepsByDay$Steps);
 - Fix the columns names in the new dataset.
 - Load the library required to plot the time series.
 - Plot the times series.
-```{r}
+
+```r
 avgSteps <- aggregate(data.no.na$steps, by = list(as.numeric(as.character(data.no.na$interval))), FUN = "mean")
 colnames(avgSteps) <- c("interval", "mean")
 library(ggplot2)
@@ -67,9 +78,17 @@ qplot(x=interval, y=mean, data = avgSteps,  geom = "line",
       )
 ```
 
+![](PA1_template_files/figure-html/unnamed-chunk-6-1.png) 
+
 2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
-```{r}
+
+```r
 avgSteps[which.max(avgSteps$mean), ]
+```
+
+```
+##     interval     mean
+## 104      835 206.1698
 ```
 
 ## Imputing missing values
@@ -78,9 +97,14 @@ Note that there are a number of days/intervals where there are missing values (c
 
 1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
 
-```{r}
+
+```r
 number.na <- nrow(subset(data, is.na(data$steps)))
 print(number.na)
+```
+
+```
+## [1] 2304
 ```
 
 2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
@@ -93,7 +117,8 @@ print(number.na)
     - Fill the missing values in the steps data frame, with the median calculated.
     - Fix the columns names in the new data frame.    
 
-```{r}
+
+```r
 stepValues <- data.frame(data$steps)
 stepValues[is.na(stepValues),] <- floor(tapply(X=data$steps,INDEX=data$interval,FUN=median,na.rm=TRUE))
 newDataFrame <- cbind(stepValues, data[,2:3])
@@ -103,7 +128,8 @@ colnames(newDataFrame) <- c("Steps", "Date", "Interval")
 
 4. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
 
-```{r}
+
+```r
 stepsByDayNew <- aggregate(newDataFrame$Steps, by=list(newDataFrame$Date), FUN = "sum")
 colnames(stepsByDayNew) <- c("Date", "Steps")
 hist(stepsByDayNew$Steps, 
@@ -112,15 +138,27 @@ hist(stepsByDayNew$Steps,
      xlab="Breaks = 10")
 ```
 
+![](PA1_template_files/figure-html/unnamed-chunk-10-1.png) 
+
 **The new histogram shows an increase in the frequency of intervals containing 0 steps; the rest of breaks remains with the same frequency.**
 
 Mean of steps in the new data set:
-```{r}
+
+```r
 mean(stepsByDayNew$Steps); 
 ```
+
+```
+## [1] 9503.869
+```
 Median of steps in the new data set:
-```{r}
+
+```r
 median(stepsByDayNew$Steps); 
+```
+
+```
+## [1] 10395
 ```
 
 *The strategy implemented to fill out the missing values, has increased the values of the mean and median of the steps; by exploring the new data set, after filling the missing values, new dates appear with information of the total steps, so, this may explain why the mean and the median increased!*
@@ -131,7 +169,8 @@ For this part the weekdays() function may be of some help here. Use the dataset 
 
 1. Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
 
-```{r}
+
+```r
 dayType <- data.frame(sapply(X=newDataFrame$Date, FUN=function(day) {
     if (weekdays(as.Date(day)) %in% c("Saturday", "Sunday")) {
         day <- "weekend"
@@ -148,11 +187,12 @@ colnames(newDataWithDayType) <- c("Steps", "Date", "Interval", "DayType")
 2. Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.
 
 - As per my native language, the locale configuration of my work environment is spanish, that is why you see 
-sábado (saturday) and domingo (sunday), as names in the vector to create the new factor variable.
+sÃ¡bado (saturday) and domingo (sunday), as names in the vector to create the new factor variable.
 - Aggregate the data by interval and type of the day (weekend or weekday), calculating the mean.
-```{r}
+
+```r
 newDataFrame$DayType <- as.factor(ifelse(weekdays(newDataFrame$Date) %in% 
-                                    c("sábado","domingo"),"weekend", "weekday"))
+                                    c("sÃ¡bado","domingo"),"weekend", "weekday"))
 dayTypeIntervalSteps <- aggregate(
     data=newDataFrame,
     Steps ~ DayType + Interval,
@@ -160,7 +200,8 @@ dayTypeIntervalSteps <- aggregate(
 )
 ```
 - Create the plot for each type of day.
-```{r}
+
+```r
 library("lattice")
 xyplot(
     type="l",
@@ -171,3 +212,5 @@ xyplot(
     layout=c(1,2)
 )
 ```
+
+![](PA1_template_files/figure-html/unnamed-chunk-15-1.png) 
