@@ -1,0 +1,115 @@
+# Reproducible Research: Peer Assessment 2
+Andres Mauricio Castro
+
+## Synopsis
+This report is intended to describe the analysis of the weather events, in two aspects, the most harmful events for the population health, and which ones have the greatest economic consequences.
+The document aims to describe the process followed for the data analysis, so, any other person can reproduce the same steps, and verify the conclusions.
+
+## Data Processing
+
+### Download And UnCompress
+We download and unzip the data set, to process it.
+We use the function bunzip2(), as the content is compressed via the bzip2 algorithm.
+
+```{r cache=TRUE}
+url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+path <- getwd()
+if(!file.exists(path)){ 
+  dir.create(path)
+}
+library(R.utils)
+if (!file.exists("StormData.csv")) {
+    fileName <- "stormData.csv.bz2"
+    download.file(url, file.path(path, fileName))
+    bunzip2(fileName, overwrite=T, remove=F)
+}
+```
+
+Read the csv file, and get an overview of how the data looks like, and what the structure of the data frame is.
+```{r cache=TRUE}
+stormData <- read.csv("stormData.csv", sep = ",")
+head(stormData)
+```
+### Subsetting
+
+Now, we create a subset of the original data set, containing just the data we need to work out the questions.
+Create a vector, to subset the original by the column EVTYPE.
+On the subset, get a sense of how it looks like.
+```{r cache=TRUE}
+events <- c("EVTYPE", "FATALITIES", "INJURIES", "PROPDMG", "PROPDMGEXP", "CROPDMG", 
+    "CROPDMGEXP")
+subsetData <- stormData[events]
+
+head(subsetData)
+```
+
+### Transformations
+We define a helper function, to transform the columns required to calculate the total damage for properties and crops, with base on the variables documentation.
+A new variable is created in the dataset, in order to represent the total damage in US dollars. 
+```{r cache=TRUE}
+transform <- function(dataset, fieldName) {
+    totalLen <- dim(dataset)[2]
+    index <- which(colnames(dataset) == fieldName)
+    dataset[, index] <- as.character(dataset[, index])
+    logic <- !is.na(toupper(dataset[, index]))
+    dataset[logic & toupper(dataset[, index]) == "B", index] <- "1000000000"
+    dataset[logic & toupper(dataset[, index]) == "M", index] <- "1000000"
+    dataset[logic & toupper(dataset[, index]) == "K", index] <- "1000"
+    dataset[logic & toupper(dataset[, index]) == "H", index] <- "100"
+    dataset[logic & toupper(dataset[, index]) == "", index] <- "1000"
+    dataset[is.numeric(dataset[, index]), index] <- as.character(10^as.numeric(dataset[, index]))
+    dataset[, index] <- as.numeric(dataset[, index])
+    dataset[is.na(dataset[, index]), index] <- 0
+    names(dataset)[index] <- fieldName
+    
+    return(dataset)
+}
+
+subsetData <- transform(subsetData, "PROPDMGEXP")
+subsetData <- transform(subsetData, "CROPDMGEXP")
+
+subsetData$totalValPropDamage <- subsetData$PROPDMG * subsetData$PROPDMGEXP
+subsetData$totalValCropDamage <- subsetData$CROPDMG * subsetData$CROPDMGEXP
+```
+
+## Results
+
+### Impact Respect To Population Health
+We use the function par, in order to combine two plots in one matrix.
+
+We are interested in knowing which are the events causing more fatalities and injuries with regards to the health; so, we aggregate the weather events by the total of fatalities and injuries, and plot just the first fifteen events for the purpose of this analysis.
+```{r}
+par(mfrow = c(1, 2),  mar = c(14, 3, 3, 2), mgp = c(3, 1, 0), cex = 0.7)
+fatalitiesByEvent <- aggregate(FATALITIES ~ EVTYPE, data = subsetData, FUN = sum)
+fatalitiesByEvent <- fatalitiesByEvent[order(-fatalitiesByEvent$FATALITIES), ][1:15, ]
+
+barplot( fatalitiesByEvent$FATALITIES, las = 3, names.arg = fatalitiesByEvent$EVTYPE,  main = "Weather Events With The Top 15 Highest Fatalities", ylab = "Number of fatalities", col = "black")
+
+
+injuriesByEvent <- aggregate(INJURIES ~ EVTYPE, data = subsetData, FUN = sum)
+injuriesByEvent <- injuriesByEvent[order(-injuriesByEvent$INJURIES), ][1:15, ]
+barplot( injuriesByEvent$INJURIES, las = 3, names.arg = injuriesByEvent$EVTYPE, main = "Weather Events With the Top 15 Highest Injuries", ylab = "Number of injuries", col = "black")
+```
+
+Tornados are causing causing the greatest number of fatalities, and the greatest impact in regards to injury.
+
+### Impact Respect To The Economy
+In regards with the economy, we want to know which are the events causing highest damages to the properties and crops; so, we aggregate the weather events by the total of damage cause (for propertie and crops), and plot just the first fifteen events for the purpose of this analysis.
+```{r}
+par(mfrow = c(1, 2),  mar = c(11, 3, 3, 2), mgp = c(3, 1, 0), cex = 0.7)
+propdmgByEvent <- aggregate(totalValPropDamage ~ EVTYPE, data = subsetData, FUN = sum)
+propdmgByEvent <- propdmgByEvent[order(-propdmgByEvent$totalValPropDamage), ][1:15, ]
+
+barplot(propdmgByEvent$totalValPropDamage, las = 3, names.arg = propdmgByEvent$EVTYPE,  
+    ylab = "Property Damage in Dollars", col = "black")
+title(main = "Events With The Top 15 Highest Property Damage", font.main = 1)
+
+cropdmgByEvent <- aggregate(totalValCropDamage ~ EVTYPE, data = subsetData, FUN = sum)
+cropdmgByEvent <- cropdmgByEvent[order(-cropdmgByEvent$totalValCropDamage), ][1:15, ]
+
+barplot(cropdmgByEvent$totalValCropDamage, las = 3, names.arg = cropdmgByEvent$EVTYPE, main = "Events With The Top 15 Highest Crop Damage", 
+    ylab = "Crop Damage in Dollars", col = "black")
+```
+    
+With regards to the properties, the flood is the event with greatest economic impace; for crops, the drought is causing the greatest damage.
+
